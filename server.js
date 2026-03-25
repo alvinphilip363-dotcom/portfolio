@@ -1,13 +1,13 @@
 // ──────────────────────────────────────────────
 //  Portfolio Backend — server.js
-//  Stack: Node.js + Express + PostgreSQL (or MySQL)
+//  Stack: Node.js + Express + MySQL (or MySQL)
 //  Run: npm install && node server.js
 // ──────────────────────────────────────────────
 
 const express = require('express');
-const { Pool }  = require('pg');          // swap with 'mysql2' for MySQL
-const cors      = require('cors');
-const path      = require('path');
+const mysql   = require('mysql2/promise'); // Using promise-based wrapper
+const cors    = require('cors');
+const path    = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -15,36 +15,38 @@ const app = express();
 // ── MIDDLEWARE ──────────────────────────────────
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // serve frontend
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ── DATABASE CONNECTION ─────────────────────────
-const db = new Pool({
-  host:     process.env.DB_HOST     || 'localhost',
-  port:     process.env.DB_PORT     || 5432,
-  database: process.env.DB_NAME     || 'portfolio_db',
-  user:     process.env.DB_USER     || 'postgres',
-  password: process.env.DB_PASSWORD || '',
-});
+let db;
 
-// Initialise table on startup
-async function initDB() {
+async function connectDB() {
   try {
-    await db.query(`
+    db = await mysql.createPool({
+      host:     process.env.DB_HOST     || 'localhost',
+      port:     process.env.DB_PORT     || 3306,      // MySQL default port
+      database: process.env.DB_NAME     || 'portfolio_db',
+      user:     process.env.DB_USER     || 'root',      // MySQL default user
+      password: process.env.DB_PASSWORD || '',
+      waitForConnections: true,
+      connectionLimit: 10,
+    });
+// Initialise table on startup
+await db.query(`
       CREATE TABLE IF NOT EXISTS contacts (
-        id         SERIAL PRIMARY KEY,
+        id         INT AUTO_INCREMENT PRIMARY KEY,
         name       VARCHAR(120) NOT NULL,
         email      VARCHAR(180) NOT NULL,
         message    TEXT        NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅  Database connected & table ready');
+    console.log('✅ MySQL Database connected & table ready');
   } catch (err) {
-    console.error('❌  DB init error:', err.message);
+    console.error('❌ MySQL connection error:', err.message);
   }
 }
-initDB();
-
+connectDB();
 // ── ROUTES ──────────────────────────────────────
 
 // Health check
@@ -53,7 +55,7 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 // GET all contact messages (mentor review endpoint)
 app.get('/api/contacts', async (_, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM contacts ORDER BY created_at DESC');
+    const [rows] = await db.query('SELECT * FROM contacts ORDER BY created_at DESC');
     res.json({ success: true, data: rows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -69,23 +71,22 @@ app.post('/api/contact', async (req, res) => {
   }
 
   try {
-    const result = await db.query(
-      'INSERT INTO contacts (name, email, message) VALUES ($1, $2, $3) RETURNING id',
+    // MySQL uses '?' as placeholders instead of '$1, $2'
+    const [result] = await db.query(
+      'INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)',
       [name, email, message]
     );
-    res.json({ success: true, id: result.rows[0].id });
+    res.json({ success: true, id: result.insertId });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // Catch-all → serve index.html (SPA support)
-app.get('*', (_, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'index.html'))
-);
-
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 // ── START SERVER ────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀  Server running → http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server on http://localhost:${PORT}`));
+
