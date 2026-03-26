@@ -1,11 +1,11 @@
 // ──────────────────────────────────────────────
 //  Portfolio Backend — server.js
-//  Stack: Node.js + Express + MySQL (or MySQL)
+//  Stack: Node.js + Express + TiDB Cloud (MySQL)
 //  Run: npm install && node server.js
 // ──────────────────────────────────────────────
 
 const express = require('express');
-const mysql   = require('mysql2/promise'); // Using promise-based wrapper
+const mysql   = require('mysql2/promise');
 const cors    = require('cors');
 const path    = require('path');
 require('dotenv').config();
@@ -18,35 +18,40 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── DATABASE CONNECTION ─────────────────────────
-let db;
+// FIX 1: declare db outside so all routes can access it
+const db = mysql.createPool({
+  host:             process.env.DB_HOST,
+  port:             parseInt(process.env.DB_PORT) || 4000,
+  database:         process.env.DB_NAME     || 'test',
+  user:             process.env.DB_USER,
+  password:         process.env.DB_PASSWORD,
+  waitForConnections: true,
+  // FIX 2: TiDB Cloud SSL — no cert file needed, just enable TLS
+  ssl: {
+    minVersion: 'TLSv1.2',
+    rejectUnauthorized: true
+  }
+});
 
-async function connectDB() {
-  try {
-    db = await mysql.createPool({
-      host:     process.env.DB_HOST     || 'localhost',
-      port:     process.env.DB_PORT     || 3306,      // MySQL default port
-      database: process.env.DB_NAME     || 'portfolio_db',
-      user:     process.env.DB_USER     || 'root',      // MySQL default user
-      password: process.env.DB_PASSWORD || '',
-      waitForConnections: true,
-      connectionLimit: 10,
-    });
 // Initialise table on startup
-await db.query(`
+async function initDB() {
+  try {
+    await db.query(`
       CREATE TABLE IF NOT EXISTS contacts (
         id         INT AUTO_INCREMENT PRIMARY KEY,
         name       VARCHAR(120) NOT NULL,
         email      VARCHAR(180) NOT NULL,
-        message    TEXT        NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        message    TEXT         NOT NULL,
+        created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ MySQL Database connected & table ready');
+    console.log('✅  MySQL Database connected & table ready');
   } catch (err) {
-    console.error('❌ MySQL connection error:', err.message);
+    console.error('❌  MySQL connection error:', err.message);
   }
 }
-connectDB();
+initDB();
+
 // ── ROUTES ──────────────────────────────────────
 
 // Health check
@@ -71,7 +76,6 @@ app.post('/api/contact', async (req, res) => {
   }
 
   try {
-    // MySQL uses '?' as placeholders instead of '$1, $2'
     const [result] = await db.query(
       'INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)',
       [name, email, message]
@@ -82,11 +86,11 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// Catch-all → serve index.html (SPA support)
-app.get('*', (req, res) => {
+// Catch-all → serve index.html
+app.get('*', (_, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
 // ── START SERVER ────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server on http://localhost:${PORT}`));
-
+app.listen(PORT, () => console.log(`🚀  Server on http://localhost:${PORT}`));
