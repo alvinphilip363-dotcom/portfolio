@@ -1,11 +1,11 @@
 # 🚀 Portfolio — Full Stack Web App
 
-A single-page portfolio website with a **React-style HTML/CSS/JS frontend**, **Node.js + Express backend**, and a **PostgreSQL database** — mirroring the Modern Web Development Workflow diagram.
+A single-page portfolio website with a **React-style HTML/CSS/JS frontend**, **Node.js + Express backend**, and a **mySQL database** — mirroring the Modern Web Development Workflow diagram.
 
 ```
 Frontend (HTML/CSS/JS)
       ↓
-Backend API (Node.js / Express)   ←──→   Database (PostgreSQL)
+Backend API (Node.js / Express)   ←──→   Database (mySQL)
       ↓
 Git → GitHub → CI/CD → Hosting
 ```
@@ -40,9 +40,9 @@ cd portfolio
 npm install
 ```
 
-### 3. Set up PostgreSQL database
+### 3. Set up mySQL database
 ```sql
--- Run in psql or pgAdmin:
+-- Run in mysql or pgAdmin:
 CREATE DATABASE portfolio_db;
 ```
 
