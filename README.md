@@ -31,7 +31,7 @@ portfolio/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/portfolio.git
+git clone https://github.com/alvinphilip363-dotcom/portfolio.git
 cd portfolio
 ```
 
@@ -103,7 +103,7 @@ git commit -m "feat: initial portfolio commit"
 
 ### Step 3 — Push to GitHub
 ```bash
-git remote add origin https://github.com/YOUR_USERNAME/portfolio.git
+git remote add origin https://github.com/alvinphilip363-dotcom/portfolio.git
 git branch -M main
 git push -u origin main
 ```
@@ -121,7 +121,7 @@ They can clone and run it locally, or review code directly on GitHub.
 
 **To review the code:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/portfolio.git
+git clone https://github.com/alvinphilip363-dotcom/portfolio.git
 cd portfolio
 npm install
 cp .env.example .env   # configure DB

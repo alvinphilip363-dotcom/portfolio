@@ -12,28 +12,22 @@ require('dotenv').config();
 
 const app = express();
 
-// ── MIDDLEWARE ──────────────────────────────────
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── DATABASE CONNECTION ─────────────────────────
-// FIX 1: declare db outside so all routes can access it
 const db = mysql.createPool({
-  host:             process.env.DB_HOST,
-  port:             parseInt(process.env.DB_PORT) || 4000,
-  database:         process.env.DB_NAME     || 'test',
-  user:             process.env.DB_USER,
-  password:         process.env.DB_PASSWORD,
+  host:               process.env.DB_HOST,
+  port:               parseInt(process.env.DB_PORT) || 4000,
+  database:           process.env.DB_NAME || 'test',
+  user:               process.env.DB_USER,
+  password:           process.env.DB_PASSWORD,
   waitForConnections: true,
-  // FIX 2: TiDB Cloud SSL — no cert file needed, just enable TLS
   ssl: {
-    minVersion: 'TLSv1.2',
-    rejectUnauthorized: true
+    rejectUnauthorized: false
   }
 });
 
-// Initialise table on startup
 async function initDB() {
   try {
     await db.query(`
@@ -41,23 +35,19 @@ async function initDB() {
         id         INT AUTO_INCREMENT PRIMARY KEY,
         name       VARCHAR(120) NOT NULL,
         email      VARCHAR(180) NOT NULL,
-        message    TEXT         NOT NULL,
-        created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-      );
+        message    TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
     `);
     console.log('✅  MySQL Database connected & table ready');
   } catch (err) {
-    console.error('❌  MySQL connection error:', err.message);
+    console.error('❌  MySQL connection error:', err);
   }
 }
 initDB();
 
-// ── ROUTES ──────────────────────────────────────
-
-// Health check
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 
-// GET all contact messages (mentor review endpoint)
 app.get('/api/contacts', async (_, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM contacts ORDER BY created_at DESC');
@@ -67,14 +57,11 @@ app.get('/api/contacts', async (_, res) => {
   }
 });
 
-// POST — contact form submission (called from index.html)
 app.post('/api/contact', async (req, res) => {
   const { name, email, message } = req.body;
-
   if (!name || !email || !message) {
     return res.status(400).json({ success: false, error: 'All fields are required.' });
   }
-
   try {
     const [result] = await db.query(
       'INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)',
@@ -86,11 +73,9 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// Catch-all → serve index.html
 app.get('*', (_, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ── START SERVER ────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀  Server on http://localhost:${PORT}`));
