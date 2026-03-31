@@ -111,7 +111,7 @@ git push -u origin main
 ### Step 4 — Share with mentor
 Give your mentor the repository URL, e.g.:
 ```
-https://github.com/YOUR_USERNAME/portfolio
+https://github.com/alvinphilip363-dotcom/portfolio
 ```
 They can clone and run it locally, or review code directly on GitHub.
 
